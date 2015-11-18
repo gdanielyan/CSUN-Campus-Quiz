@@ -4,179 +4,194 @@
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
 	<title>CSUN - Campus Quiz</title>
-   <style type="text/css">
+    <style type="text/css">
     	html  { 
     		font-family: "Arial Black", Gadget, sans-serif;
+            background-color:rgba(192,192,192,0.3);
     	}
+        body{
+            margin: 0;
+            padding: 0;
+        }
   		#map-canvas { 
   			height: 900px;
   			width: 1100px;
-  			margin: 50px auto;
+  			margin: 0px auto 45px auto;
+            border: 1px solid black;
   		}
 
   		#quiz-questions {
-  			width: 500px;
-  			margin: 0px auto;
+            height: 95px;
+  			margin: 2px auto;
   		}
 		
-		#current-question {
-			margin: 0 auto;
-			font-size: 1.2em;
+		#current-question{
+			margin: 0px auto;
+			font-size: 2.7em;
+            display:block;
+            text-align: center;
 		}
 
-  		button {
-  			display: inline;
-  			margin: 0 auto 0 15px;
-  			width: 50px;
-  			height: 30px;
-  			text-align: center;
-  			text-transform: uppercase;
-  			font-weight: bold;
-  			color: blue;
-  		}
-	</style>
+        #error-message{
+            margin: 0px auto;
+            font-size: 1.2em;
+            display:block;
+            text-align: center;
+        }
 
-   <script type="text/javascript"
+        #score {
+            border: 1px dashed black;
+            font-size: 4em;
+            background: greenyellow;
+            display: none;
+            text-align: center;
+        }
+
+        .blue {
+            color: royalblue;
+        }
+
+    </style>
+
+    <script type="text/javascript"
       src="https://maps.googleapis.com/maps/api/js?sensor=false">
-   </script>
+    </script>
     
-   <script type="text/javascript">
+    <script type="text/javascript">
 
-    window.addEventListener("load", init, false);
-    var curIndex = 0;
-    var question;
-    var errorMessage;
-    var map;
+        window.addEventListener("load", init, false);
+        var question; // The current question being asked
+        var errorMessage; //The message that will display whether question was answer correctly or not.
+        var curIndex = 0; //Index of the current quesiton with question array.
+        var score = 0;//Keep track of score
+        var map; //global var for the map object
 
-    var jacCoord = [34.241885208561900,-118.52786242961884, 34.241024891667266,-118.52912843227386];
-    var bayCoord = [34.240670119253280,-118.53015840053558, 34.240226651633200,-118.53142440319061];
-    var srcCoord = [34.240572556577305,-118.52464377880096, 34.239339709384440,-118.52513730525970];
-    var usuCoord = [34.2402266516332, -118.52678954601288, 34.23983639819503, -118.52721869945526];
-    var mataCoord= [34.242293190819790,-118.525630831718440, 34.241929554555284,-118.526145815849300];
+        //array of questions to be asked
+        var arrayOfQuestions = ["Where is Jacaranda Hall?", "Where is Bayramian Hall?", "Where is the University Student Union?", "Where is the Student Recreation Center?", "Where is the Matadome?"];
 
-	function doubleClicked(e)
-	{   
-        //keep track number of questions correct
-        var score = 0;
-        var error; 
+        //The 4 corners (approx) of each building.
+        var jacCoord = [34.241885208561900,-118.52786242961884, 34.241024891667266,-118.52912843227386];
+        var bayCoord = [34.240670119253280,-118.53015840053558, 34.240226651633200,-118.53142440319061];
+        var srcCoord = [34.240572556577305,-118.52464377880096, 34.239339709384440,-118.52513730525970];
+        var usuCoord = [34.240226651633200,-118.52678954601288, 34.239836398195030,-118.52721869945526];
+        var mataCoord= [34.242293190819790,-118.52563083171844, 34.241929554555284,-118.52614581584930];
 
-        var n, e, s, w;
-        var col;
+        //Creates and displays map on HTML
+        function init(){
+            var mapOptions = {
+                zoom: 17, scrollwheel: false, draggable: false,
+                center: new google.maps.LatLng(34.239285, -118.527539),
+                mapTypeId: google.maps.MapTypeId.ROADMAP, disableDoubleClickZoom: true, disableDefaultUI: true,
+            }
 
-        //lat and long of event clicks
-        var lat = e.latLng.lat();
-        var lng = e.latLng.lng();
+            map = new google.maps.Map(document.getElementById("map-canvas"), mapOptions);
+            google.maps.event.addListener(map, 'dblclick', doubleClicked);
 
-        switch(curIndex){
-            case 0:
-                n = jacCoord[0];
-                e = jacCoord[1];
-                s = jacCoord[2];
-                w = jacCoord[3];
-                error = "Sorry thats not where Jacaranda hall is :(";
-                break;
-            case 1:
-                n = bayCoord[0];
-                e = bayCoord[1];
-                s = bayCoord[2];
-                w = bayCoord[3];
-                error = "Sorry thats not where Bayramian is :(";
-                break;
-            case 2:
-                n = usuCoord[0];
-                e = usuCoord[1];
-                s = usuCoord[2];
-                w = usuCoord[3];
-                error = "Sorry thats not where University Student Union is :(";
-                break;
-            case 3:
-                n = srcCoord[0];
-                e = srcCoord[1];
-                s = srcCoord[2];
-                w = srcCoord[3];
-                error = "Sorry thats not where Student Recreation Center is :(";
-                break;
-            case 4:
-                n = mataCoord[0];
-                e = mataCoord[1];
-                s = mataCoord[2];
-                w = mataCoord[3];
-                error = "Sorry thats not where Matadome is :(";
-                break;
-        }
+            //Custom styles to remove building labels.
+            var styles = [ { "elementType": "labels.icon", "stylers": [ { "visibility": "off" } ] } ];
+            map.setOptions({styles: styles});
 
-        if(lat < n && lat > s && lng < e && lng > w) {
-            error = "Nice... + 1";
-            col = 'green';
-            score++;
-        }else {
-            col = 'red';
-        }
-
-        var bounds = {
-            north: n, east: e, south: s, west: w
-        };
-
-        // Define a rectangle and set its editable property to true.
-        var rectangle = new google.maps.Rectangle({
-            bounds: bounds,
-            strokeColor: col,
-            fillColor: col,
-            fillOpacity: 0.35 
-        });
-
-        rectangle.setMap(map);
-
-        if(curIndex < 4){
-            errorMessage.innerHTML = error;
+            //put a handle on the quesiton and error paragraphs.
+            question = document.getElementById("current-question");
             question.innerHTML = arrayOfQuestions[curIndex];
-            curIndex++;
-            //launch anamation
-        }else{
-            question.innerHTML = "Thats the end!";
-            errorMessage.innerHTML = "";
-        }
-	}
-
-    function nextQuestion(){
-        if(curIndex < 4){
-            question.innerHTML = arrayOfQuestions[++curIndex];
-            errorMessage.innerHTML = "";
-        }else if(curIndex == 4){
-            var elem = document.getElementById('nextButton');
-            elem.parentNode.removeChild(elem);
-        }
-    }
-
-    function init()
-    {
-        var mapOptions = {
-            zoom: 17,
-            scrollwheel: false,
-            draggable: false,
-            center: new google.maps.LatLng(34.239285, -118.527539),
-            mapTypeId: google.maps.MapTypeId.ROADMAP, disableDoubleClickZoom: true, disableDefaultUI: true,
+            errorMessage = document.getElementById("error-message");
         }
 
-        map = new google.maps.Map(document.getElementById("map-canvas"), mapOptions);
-        google.maps.event.addListener(map, 'dblclick', doubleClicked);
-        question = document.getElementById("current-question");
-        question.innerHTML = arrayOfQuestions[curIndex];
+        //Responds to double click events.
+        function doubleClicked(e){
+            runQuiz(e);
+        }
 
-        errorMessage = document.getElementById("error-message");
-    }
+        //The bulk of the quiz is done here..
+        function runQuiz(e){
 
-    var arrayOfQuestions = ["Where is Jacaranda Hall?", "Where is Bayramian Hall?", "Where is the University Student Union?", "Where is the Student Recreation Center?", "Where is the Matadome?"];
+            //lat and long of event clicks
+            var lat = e.latLng.lat();
+            var lng = e.latLng.lng();
+            
+            var error; 
 
+            var n, e, s, w;
+            var col;
+
+            //Depending on the current question asked.. the target corners are set north = n, south = s, east = e, west = w.
+            switch(curIndex){
+                case 0:
+                    n = jacCoord[0]; e = jacCoord[1];
+                    s = jacCoord[2]; w = jacCoord[3];
+                    error = "Sorry thats not where Jacaranda hall is :(";
+                    break;
+                case 1:
+                    n = bayCoord[0]; e = bayCoord[1];
+                    s = bayCoord[2]; w = bayCoord[3];
+                    error = "Sorry thats not where Bayramian is :(";
+                    break;
+                case 2:
+                    n = usuCoord[0]; e = usuCoord[1];
+                    s = usuCoord[2]; w = usuCoord[3];
+                    error = "Sorry thats not where University Student Union is :(";
+                    break;
+                case 3:
+                    n = srcCoord[0]; e = srcCoord[1];
+                    s = srcCoord[2]; w = srcCoord[3];
+                    error = "Sorry thats not where Student Recreation Center is :(";
+                    break;
+                case 4:
+                    n = mataCoord[0]; e = mataCoord[1];
+                    s = mataCoord[2]; w = mataCoord[3];
+                    error = "Sorry thats not where Matadome is :(";
+                    break;
+            }
+
+            //Check to see if double click was within the bounds of the building
+            //if so then set color to green, increment score, and error will display as 'Correct'!
+            if(lat < n && lat > s && lng < e && lng > w) {
+                error = "Thats right";
+                col = 'green';
+                score++;
+            }else {
+                col = 'red';
+            }
+
+            //set the bounds to fill in the building either green or red.
+            var bounds = { north: n, east: e, south: s, west: w };
+
+            // Define a rectangle and set its color and bounds
+            var rectangle = new google.maps.Rectangle({
+                bounds: bounds, strokeColor: col, fillColor: col, fillOpacity: 0.2 
+            });
+
+            //this call to rectangle will display the filled rectangle on the map
+            rectangle.setMap(map);
+
+            //Give the next question
+            if(++curIndex < 5){
+                question.innerHTML = arrayOfQuestions[curIndex];
+                errorMessage.innerHTML = error;
+            }
+            else{
+                displayScore();
+            }
+        }
+
+        //Animate and display score!
+        function displayScore(){
+            document.getElementById('score').innerHTML = score + "/" + 5;
+            $( "#score" ).slideDown();
+            question.style.display = 'none';
+        }
     </script>
 </head>
 
 <body>
 	<div id="quiz-questions">
-		<p><span id="current-question"></span><button id="nextButton" type="button" onclick="nextQuestion()">Next</button></p>
-		<p><span id="error-message"></span></p>
+        <div id="score"></div>
+		<p id="current-question"></p>
+		<p id="error-message" class="blue"></p>
 	</div>
 	<div id="map-canvas">
 	</div>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
 </body>
 </html>
